@@ -10,7 +10,7 @@
 # #
 # # Usage: python convert_h5_to_npz.py <path_to_h5_file>
 
-
+#////////////reading from one file
 # import numpy as np
 # import h5py
 # import pathlib
@@ -27,7 +27,7 @@
 #     data = file['I'][:,22:]
 #     data = data.reshape((data.shape[0],720,240))
 #     np.savez_compressed(output_filepath, arr_0=data)
-
+        
 
 # def load_npz(filepath):
 #     npz_file = np.load(filepath)
@@ -47,7 +47,7 @@
 # print(f"Shape: {data.shape}")
 # print(f"Min: {data.min()}, Max: {data.max()}, Mean: {data.mean():.2f}")
 
-
+#///////////reading from all files
 import numpy as np
 import h5py
 import pathlib
@@ -66,6 +66,7 @@ def convert_h5_to_npz(filepath):
     data = data.reshape((data.shape[0],720,240))
     np.savez_compressed(output_filepath, arr_0=data)
 
+    return output_filepath
 def load_npz(filepath):
     """Load an .npz file and return the data array."""
     npz_file = np.load(filepath)
