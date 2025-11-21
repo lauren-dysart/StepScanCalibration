@@ -1,0 +1,143 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+FNAME = r"/Users/laurendysart/Desktop/Senior_Design/TileLookup_13210001.dat"   # change to your file path
+
+'''PIX_W = 120
+PIX_H = 120
+NPIX = PIX_W * PIX_H
+HEADER_BYTES = 32
+BLOCK_SIZE = 3252        # bytes per pixel inferred
+OFF = HEADER_BYTES
+
+def read_block(f, idx):
+    f.seek(OFF + idx * BLOCK_SIZE)
+    data = f.read(BLOCK_SIZE)
+    return data
+
+def try_interpret(data):
+    # as uint16 little-endian
+    if len(data) % 2 == 0:
+        arr16 = np.frombuffer(data, dtype=np.uint16)
+    else:
+        arr16 = None
+    # as float32
+    if len(data) % 4 == 0:
+        arr32 = np.frombuffer(data, dtype=np.float32)
+    else:
+        arr32 = None
+    # as uint8
+    arr8 = np.frombuffer(data, dtype=np.uint8)
+    return arr8, arr16, arr32
+
+with open(FNAME, "rb") as f:
+    # read global header
+    f.seek(0)
+    header = f.read(HEADER_BYTES)
+    print("Header (ASCII, hex):")
+    try:
+        print(header.decode('ascii', errors='replace'))
+    except:
+        pass
+    print(header.hex())
+
+    # inspect first, center, last pixel blocks
+    indices = [0, NPIX//2, NPIX-1]
+    for idx in indices:
+        data = read_block(f, idx)
+        arr8, arr16, arr32 = try_interpret(data)
+        print(f"\nPixel #{idx}: {len(data)} bytes")
+        print(" uint8: len", arr8.size, " min/max", arr8.min(), arr8.max(), " mean", arr8.mean())
+        if arr16 is not None:
+            print(" uint16: len", arr16.size, " min/max", arr16.min(), arr16.max(), " mean", arr16.mean())
+        if arr32 is not None:
+            print(" float32: len", arr32.size, " min/max", arr32.min(), arr32.max(), " mean", arr32.mean())
+
+        # quick plot (uint16 if available, else uint8)
+        plt.figure(figsize=(6,2))
+        if arr16 is not None:
+            plt.plot(arr16)
+            plt.title(f"Pixel {idx} as uint16")
+        else:
+            plt.plot(arr8)
+            plt.title(f"Pixel {idx} as uint8")
+        plt.xlabel("sample index")
+        plt.tight_layout()
+    plt.show()
+
+'''
+# ---------------------------------------------------------
+# 2. PARSE THE HEX STRING INTO 16-BIT LITTLE-ENDIAN VALUES
+# ---------------------------------------------------------
+
+# Remove Sensor: ... Data footer if present
+
+hex_words = []
+
+with open(FNAME, "rb") as f:
+    # Jump to byte offset 64
+    f.seek(64)
+    
+    # Read exactly 3316 bytes
+    chunk = f.read(3316)
+
+    # Convert each 4-byte word into hex
+    for i in range(0, len(chunk), 4):
+        word_hex = chunk[i:i+4].hex().upper()
+        hex_words.append(word_hex)
+
+# If you want a single long hex string:
+hex_string = " ".join(hex_words)
+
+print("Extracted", len(hex_words), "words")
+print(hex_string[:200], "...")
+
+clean_hex = []
+for token in hex_string.split():
+    # Skip ASCII footer sequences
+    if token in ("53656E73", "6F72203A", "44617461"):
+        continue
+    # Ensure token is a valid 8-hex-digit word
+    if len(token) == 8:
+        clean_hex.append(token)
+
+values = []
+for word in clean_hex:
+    # word is 32 bits, but data is 16-bit little endian duplicated
+    # e.g. "02000200" → low 16 bits = 0x0002
+    low16 = int(word[4:], 16)   # last 4 hex digits
+    values.append(low16)
+
+# ---------------------------------------------------------
+# 3. PLOT THE CALIBRATION CURVE (first 1500 in blue, rest in red)
+# ---------------------------------------------------------
+
+plt.figure(figsize=(10,5))
+
+# First 1500 samples (blue)
+plt.plot(values[:750], color='blue', label='First 1500')
+
+# Remaining samples (red)
+if len(values) > 750:
+    plt.plot(range(750, len(values)), values[750:], color='red', label='Remaining')
+
+plt.title("Sensor Calibration Curve")
+plt.xlabel("Index")
+plt.ylabel("Calibration Value")
+plt.grid(True)
+plt.legend()
+plt.show()
+
+# ---------------------------------------------------------
+# 3. PLOT THE CALIBRATION CURVE
+# ---------------------------------------------------------
+
+plt.figure(figsize=(10,5))
+plt.plot(values)
+plt.title("Sensor Calibration Curve")
+plt.xlabel("Index")
+plt.ylabel("Calibration Value")
+plt.grid(True)
+#plt.tight_layout()
+plt.show()
+
